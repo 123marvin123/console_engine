@@ -48,10 +48,10 @@ use std::io::{stdout, Stdout};
 ///         engine.wait_frame(); // wait for next frame + capture inputs
 ///         engine.clear_screen(); // reset the screen
 ///
-///         engine.line(0, 0, 19, 9, pixel::pxl('#')); // draw a line of '#' from [0,0] to [19,9]
+///         engine.line(0, 0, 19, 9, pixel::pxl("#")); // draw a line of '#' from [0,0] to [19,9]
 ///         engine.print(0, 4, format!("Result: {}", value).as_str()); // prints some value at [0,4]
 ///
-///         engine.set_pxl(4, 0, pixel::pxl_fg('O', Color::Cyan)); // write a majestic cyan 'O' at [4,0]
+///         engine.set_pxl(4, 0, pixel::pxl_fg("O", Color::Cyan)); // write a majestic cyan 'O' at [4,0]
 ///
 ///         if engine.is_key_pressed(KeyCode::Char('q')) { // if the user presses 'q' :
 ///             break; // exits app
@@ -251,7 +251,7 @@ impl ConsoleEngine {
     ///
     /// // create a new Screen struct and draw a square inside it
     /// let mut my_square = Screen::new(8,8);
-    /// my_square.rect(0,0,7,7,pixel::pxl('#'));
+    /// my_square.rect(0,0,7,7,pixel::pxl("#"));
     /// my_square.print(1,1,"square");
     ///
     /// // prints the square in the engine's screen at a specific location
@@ -279,7 +279,7 @@ impl ConsoleEngine {
     /// ```
     /// use console_engine::pixel;
     /// // ...
-    /// engine.line(0, 0, 9, 9, pixel::pxl('#'));
+    /// engine.line(0, 0, 9, 9, pixel::pxl("#"));
     /// ```
     pub fn line(&mut self, start_x: i32, start_y: i32, end_x: i32, end_y: i32, character: Pixel) {
         self.screen.line(start_x, start_y, end_x, end_y, character)
@@ -291,7 +291,7 @@ impl ConsoleEngine {
     /// ```
     /// use console_engine::pixel;
     /// // ...
-    /// engine.rect(0, 0, 9, 9, pixel::pxl('#'));
+    /// engine.rect(0, 0, 9, 9, pixel::pxl("#"));
     /// ```
     pub fn rect(&mut self, start_x: i32, start_y: i32, end_x: i32, end_y: i32, character: Pixel) {
         self.screen.rect(start_x, start_y, end_x, end_y, character)
@@ -303,7 +303,7 @@ impl ConsoleEngine {
     /// ```
     /// use console_engine::pixel;
     /// // ...
-    /// engine.fill_rect(0, 0, 9, 9, pixel::pxl('#'));
+    /// engine.fill_rect(0, 0, 9, 9, pixel::pxl("#"));
     /// ```
     pub fn fill_rect(
         &mut self,
@@ -324,7 +324,7 @@ impl ConsoleEngine {
     /// ```
     /// use console_engine::pixel;
     /// // ...
-    /// engine.circle(10, 10, 4, pixel::pxl('#'));
+    /// engine.circle(10, 10, 4, pixel::pxl("#"));
     /// ```
     pub fn circle(&mut self, x: i32, y: i32, radius: u32, character: Pixel) {
         self.screen.circle(x, y, radius, character)
@@ -337,7 +337,7 @@ impl ConsoleEngine {
     /// ```
     /// use console_engine::pixel;
     /// // ...
-    /// engine.fill_circle(10, 10, 4, pixel::pxl('#'));
+    /// engine.fill_circle(10, 10, 4, pixel::pxl("#"));
     /// ```
     pub fn fill_circle(&mut self, x: i32, y: i32, radius: u32, character: Pixel) {
         self.screen.fill_circle(x, y, radius, character)
@@ -349,7 +349,7 @@ impl ConsoleEngine {
     /// ```
     /// use console_engine::pixel;
     /// // ...
-    /// engine.triangle(8,8, 4,6, 9,2, pixel::pxl('#'));
+    /// engine.triangle(8,8, 4,6, 9,2, pixel::pxl("#"));
     /// ```
     #[allow(clippy::too_many_arguments)]
     pub fn triangle(
@@ -372,7 +372,7 @@ impl ConsoleEngine {
     /// ```
     /// use console_engine::pixel;
     /// // ...
-    /// engine.fill_triangle(8,8, 4,6, 9,2, pixel::pxl('#'));
+    /// engine.fill_triangle(8,8, 4,6, 9,2, pixel::pxl("#"));
     /// ```
     #[allow(clippy::too_many_arguments)]
     pub fn fill_triangle(
@@ -402,9 +402,9 @@ impl ConsoleEngine {
     /// use console_engine::pixel;
     ///
     /// // fill the screen with characters
-    /// engine.fill(pixel::pxl('#'));
+    /// engine.fill(pixel::pxl("#"));
     /// // free one space to the bottom
-    /// engine.scroll(0,1,pixel::pxl(' '));
+    /// engine.scroll(0,1,pixel::pxl(" "));
     /// // print something at this place
     /// engine.print(0, height-1, "Hello, world!");
     /// ```
@@ -433,7 +433,7 @@ impl ConsoleEngine {
     ///     engine.print(0,0,"Found a 'o'");
     /// }
     /// ```
-    pub fn get_pxl(&self, x: i32, y: i32) -> Result<Pixel, String> {
+    pub fn get_pxl(&self, x: i32, y: i32) -> Result<&Pixel, String> {
         self.screen.get_pxl(x, y)
     }
 
@@ -459,7 +459,7 @@ impl ConsoleEngine {
     /// ```
     /// use console_engine::pixel;
     /// // extract a 3x2 screen from the engine screen
-    /// let scr_chunk = engine.extract(10, 4, 12, 5, pixel::pxl(' '));
+    /// let scr_chunk = engine.extract(10, 4, 12, 5, pixel::pxl(" "));
     /// ```
     pub fn extract(
         &self,
@@ -479,7 +479,7 @@ impl ConsoleEngine {
     /// usage
     /// ```
     /// // create a new screen of 40x10 and draw some things on it
-    /// let mut scr = Screen::new(40,10)
+    /// let mut scr = Screen::new(40,10);
     /// scr.rect(0,0,39,9, pixel::pxl("#"));
     /// // ...
     ///
@@ -566,12 +566,12 @@ impl ConsoleEngine {
                             self.stdout,
                             style::SetForegroundColor(pixel.fg),
                             style::SetBackgroundColor(pixel.bg),
-                            style::Print(pixel.chr)
+                            style::Print(&pixel.chr)
                         )
                         .unwrap();
                         first = false;
                     } else {
-                        queue!(self.stdout, style::Print(pixel.chr)).unwrap();
+                        queue!(self.stdout, style::Print(&pixel.chr)).unwrap();
                     }
                 } else {
                     moving = true
@@ -702,7 +702,7 @@ impl ConsoleEngine {
     ///
     /// usage:
     /// ```
-    /// use console_engine::{KeyCode, KeyModifiers}
+    /// use console_engine::{KeyCode, KeyModifiers};
     ///
     /// loop {
     ///     engine.wait_frame(); // wait for next frame + captures input
@@ -772,7 +772,7 @@ impl ConsoleEngine {
     /// // prints a 'P' where the mouse's left button has been pressed
     /// let mouse_pos = engine.get_mouse_press(MouseButton::Left);
     /// if let Some(mouse_pos) = mouse_pos {
-    ///     engine.set_pxl(mouse_pos.0 as i32, mouse_pos.1 as i32, pixel::pxl('P'));
+    ///     engine.set_pxl(mouse_pos.0 as i32, mouse_pos.1 as i32, pixel::pxl("P"));
     /// }
     /// ```
     ///
@@ -822,7 +822,7 @@ impl ConsoleEngine {
     /// // prints a 'H' where the mouse is currently held
     /// let mouse_pos = engine.get_mouse_held(MouseButton::Left);
     /// if let Some(mouse_pos) = mouse_pos {
-    ///     engine.set_pxl(mouse_pos.0 as i32, mouse_pos.1 as i32, pixel::pxl('H'));
+    ///     engine.set_pxl(mouse_pos.0 as i32, mouse_pos.1 as i32, pixel::pxl("H"));
     /// }
     /// ```
     pub fn get_mouse_held(&self, button: MouseButton) -> Option<(u32, u32)> {
@@ -854,7 +854,7 @@ impl ConsoleEngine {
     /// // prints a 'R' where the mouse has been released
     /// let mouse_pos = engine.get_mouse_released(MouseButton::Left);
     /// if let Some(mouse_pos) = mouse_pos {
-    ///     engine.set_pxl(mouse_pos.0 as i32, mouse_pos.1 as i32, pixel::pxl('R'));
+    ///     engine.set_pxl(mouse_pos.0 as i32, mouse_pos.1 as i32, pixel::pxl("R"));
     /// }
     /// ```
     pub fn get_mouse_released(&self, button: MouseButton) -> Option<(u32, u32)> {

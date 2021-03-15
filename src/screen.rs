@@ -4,6 +4,7 @@ use super::crossterm::style::Color;
 use super::crossterm::{execute, style};
 use super::pixel;
 use super::pixel::Pixel;
+use unicode_segmentation::UnicodeSegmentation;
 
 /// Screen structure
 ///
@@ -30,8 +31,8 @@ pub struct Screen {
 ///     let mut scr = screen::Screen::new(20,11);
 ///
 ///     // draw some shapes and prints some text
-///     scr.rect(0,0, 19,10,pixel::pxl('#'));
-///     scr.fill_circle(5,5, 3, pixel::pxl_fg('*', Color::Blue));
+///     scr.rect(0,0, 19,10,pixel::pxl("#"));
+///     scr.fill_circle(5,5, 3, pixel::pxl_fg("*", Color::Blue));
 ///     scr.print(11,4, "Hello,");
 ///     scr.print(11,5, "World!");
 ///
@@ -43,13 +44,13 @@ pub struct Screen {
 impl Screen {
     /// Creates a new Screen object with the provided width and height.
     pub fn new(width: u32, height: u32) -> Screen {
-        Self::new_fill(width, height, pixel::pxl(' '))
+        Self::new_fill(width, height, pixel::pxl(" "))
     }
 
     /// Creates a new empty Screen object with the provided widht and height
     /// Makes sure to [`clear`](#method.clear) or [`fill`](#method.fill) it before drawing anything
     pub fn new_empty(width: u32, height: u32) -> Screen {
-        let mut scr = Self::new_fill(width, height, pixel::pxl('\u{0}'));
+        let mut scr = Self::new_fill(width, height, pixel::pxl("\u{0}"));
         scr.empty = true;
         scr
     }
@@ -81,7 +82,7 @@ impl Screen {
     pub fn from_string(string: String, fg: Color, bg: Color, width: u32, height: u32) -> Screen {
         assert!(string.chars().count() == (width*height) as usize, format!("The String must have the length corresponding to width*height (={}) but the given String has a length of {}.", width*height, string.chars().count()));
         let vec: Vec<Pixel> = string
-            .chars()
+            .graphemes(true)
             .map(|chr| pixel::pxl_fbg(chr, fg, bg))
             .collect();
         Screen::from_vec(vec, width, height)
@@ -98,12 +99,12 @@ impl Screen {
 
     /// Reset the screen to a blank state
     pub fn clear(&mut self) {
-        self.fill(pixel::pxl(' '));
+        self.fill(pixel::pxl(" "));
     }
 
     /// Fill the entire screen to the given pixel
     pub fn fill(&mut self, pixel: Pixel) {
-        self.empty = pixel.chr == '\u{0}';
+        self.empty = pixel.chr == "\u{0}";
         self.screen = vec![pixel; (self.width * self.height) as usize];
     }
 
@@ -111,7 +112,7 @@ impl Screen {
     /// refresh internal "empty" value
     pub fn check_empty(&mut self) -> bool {
         for pxl in self.screen.iter() {
-            if pxl.chr != '\u{0}' {
+            if pxl.chr != "\u{0}" {
                 self.empty = false;
                 return false;
             }
@@ -175,10 +176,10 @@ impl Screen {
             let mut ignore_count = delta_x;
             let mut origin_row = pos / self.get_width() as usize;
             // place each characters one by one. Stops before overflowing
-            for str_chr in string.chars() {
+            for str_chr in string.graphemes(false) {
                 let mut chr = str_chr;
                 // process carret return and new line characters
-                if chr == '\n' {
+                if chr == "\n" {
                     y += 1;
                     origin_row += 1;
                     ignore_count = delta_x;
@@ -186,15 +187,15 @@ impl Screen {
                         break;
                     }
                 }
-                if chr == '\n' || chr == '\r' {
+                if chr == "\n" || chr == "\r" {
                     // the cursor is sent back to the x index
                     // instead of rolling back on the left of the screen
                     pos = self.coord_to_index(std::cmp::max(0, x), y);
                     continue;
                 }
                 // tabs are ignored, replaced by space
-                if chr == '\t' {
-                    chr = ' ';
+                if chr == "\t" {
+                    chr = " ";
                 }
 
                 if ignore_count <= 0 {
@@ -221,7 +222,7 @@ impl Screen {
     ///
     /// // create a new Screen struct and draw a square inside it
     /// let mut my_square = Screen::new(8,8);
-    /// my_square.rect(0,0,7,7,pixel::pxl('#'));
+    /// my_square.rect(0,0,7,7,pixel::pxl("#"));
     /// my_square.print(1,1,"square");
     ///
     /// // prints the square in the main window at a specific location
@@ -231,7 +232,7 @@ impl Screen {
         for j in 0..source.get_height() as i32 {
             for i in 0..source.get_width() as i32 {
                 // unwrap here because we are sure that we won't get out of range
-                self.set_pxl(x + i, y + j, source.get_pxl(i, j).unwrap());
+                self.set_pxl(x + i, y + j, source.get_pxl(i, j).unwrap().clone());
             }
         }
     }
@@ -245,8 +246,8 @@ impl Screen {
             for i in 0..source.get_width() as i32 {
                 // unwrap here because we are sure that we won't get out of range
                 let pxl = source.get_pxl(i, j).unwrap();
-                if pxl.chr != alpha_character {
-                    self.set_pxl(x + i, y + j, pxl);
+                if pxl.chr.chars().next().unwrap_or_default() != alpha_character {
+                    self.set_pxl(x + i, y + j, pxl.clone());
                 }
             }
         }
@@ -261,8 +262,9 @@ impl Screen {
         } else {
             end_x + 1
         };
+
         for i in start..end {
-            self.set_pxl(i, start_y, character);
+            self.set_pxl(i, start_y, character.clone());
         }
     }
 
@@ -276,7 +278,7 @@ impl Screen {
             end_y + 1
         };
         for j in start..end {
-            self.set_pxl(start_x, j, character);
+            self.set_pxl(start_x, j, character.clone());
         }
     }
 
@@ -289,7 +291,7 @@ impl Screen {
     /// ```
     /// use console_engine::pixel;
     /// // ...
-    /// screen.line(0, 0, 9, 9, pixel::pxl('#'));
+    /// screen.line(0, 0, 9, 9, pixel::pxl("#"));
     /// ```
     pub fn line(&mut self, start_x: i32, start_y: i32, end_x: i32, end_y: i32, character: Pixel) {
         let delta_x = end_x - start_x;
@@ -317,7 +319,7 @@ impl Screen {
             let mut y = y0;
 
             for x in x0..x1 + 1 {
-                screen.set_pxl(x, y, character);
+                screen.set_pxl(x, y, character.clone());
                 if d > 0 {
                     y += yi;
                     d -= 2 * dx;
@@ -338,7 +340,7 @@ impl Screen {
             let mut x = x0;
 
             for y in y0..y1 + 1 {
-                screen.set_pxl(x, y, character);
+                screen.set_pxl(x, y, character.clone());
                 if d > 0 {
                     x += xi;
                     d -= 2 * dy;
@@ -366,13 +368,13 @@ impl Screen {
     /// ```
     /// use console_engine::pixel;
     /// // ...
-    /// screen.rect(0, 0, 9, 9, pixel::pxl('#'));
+    /// screen.rect(0, 0, 9, 9, pixel::pxl("#"));
     /// ```
     pub fn rect(&mut self, start_x: i32, start_y: i32, end_x: i32, end_y: i32, character: Pixel) {
-        self.h_line(start_x, start_y, end_x, character); // top
-        self.v_line(end_x, start_y, end_y, character); // right
-        self.h_line(end_x, end_y, start_x, character); // bottom
-        self.v_line(start_x, end_y, start_y, character); // left
+        self.h_line(start_x, start_y, end_x, character.clone()); // top
+        self.v_line(end_x, start_y, end_y, character.clone()); // right
+        self.h_line(end_x, end_y, start_x, character.clone()); // bottom
+        self.v_line(start_x, end_y, start_y, character.clone()); // left
     }
 
     /// Fill a rectangle of the provided character between two sets of coordinates  
@@ -381,7 +383,7 @@ impl Screen {
     /// ```
     /// use console_engine::pixel;
     /// // ...
-    /// screen.fill_rect(0, 0, 9, 9, pixel::pxl('#'));
+    /// screen.fill_rect(0, 0, 9, 9, pixel::pxl("#"));
     /// ```
     pub fn fill_rect(
         &mut self,
@@ -398,7 +400,7 @@ impl Screen {
             start_y + 1
         };
         for y in y0..y1 {
-            self.h_line(start_x, y, end_x, character);
+            self.h_line(start_x, y, end_x, character.clone());
         }
     }
 
@@ -409,7 +411,7 @@ impl Screen {
     /// ```
     /// use console_engine::pixel;
     /// // ...
-    /// screen.circle(10, 10, 4, pixel::pxl('#'));
+    /// screen.circle(10, 10, 4, pixel::pxl("#"));
     /// ```
     pub fn circle(&mut self, x: i32, y: i32, radius: u32, character: Pixel) {
         let mut relative_pos_x = 0 as i32;
@@ -420,14 +422,14 @@ impl Screen {
         }
 
         while relative_pos_y >= relative_pos_x {
-            self.set_pxl(x + relative_pos_x, y - relative_pos_y, character);
-            self.set_pxl(x + relative_pos_y, y - relative_pos_x, character);
-            self.set_pxl(x + relative_pos_y, y + relative_pos_x, character);
-            self.set_pxl(x + relative_pos_x, y + relative_pos_y, character);
-            self.set_pxl(x - relative_pos_x, y + relative_pos_y, character);
-            self.set_pxl(x - relative_pos_y, y + relative_pos_x, character);
-            self.set_pxl(x - relative_pos_y, y - relative_pos_x, character);
-            self.set_pxl(x - relative_pos_x, y - relative_pos_y, character);
+            self.set_pxl(x + relative_pos_x, y - relative_pos_y, character.clone());
+            self.set_pxl(x + relative_pos_y, y - relative_pos_x, character.clone());
+            self.set_pxl(x + relative_pos_y, y + relative_pos_x, character.clone());
+            self.set_pxl(x + relative_pos_x, y + relative_pos_y, character.clone());
+            self.set_pxl(x - relative_pos_x, y + relative_pos_y, character.clone());
+            self.set_pxl(x - relative_pos_y, y + relative_pos_x, character.clone());
+            self.set_pxl(x - relative_pos_y, y - relative_pos_x, character.clone());
+            self.set_pxl(x - relative_pos_x, y - relative_pos_y, character.clone());
             if distance < 0 {
                 distance += 4 * relative_pos_x as i32 + 6;
                 relative_pos_x += 1;
@@ -446,7 +448,7 @@ impl Screen {
     /// ```
     /// use console_engine::pixel;
     /// // ...
-    /// screen.fill_circle(10, 10, 4, pixel::pxl('#'));
+    /// screen.fill_circle(10, 10, 4, pixel::pxl("#"));
     /// ```
     pub fn fill_circle(&mut self, x: i32, y: i32, radius: u32, character: Pixel) {
         // Taken from wikipedia
@@ -460,7 +462,7 @@ impl Screen {
         // create a lambda function that draw fast horizontal lines
         let mut drawline = |start_x: i32, end_x: i32, y: i32| {
             for i in start_x..end_x + 1 {
-                self.set_pxl(i, y, character);
+                self.set_pxl(i, y, character.clone());
             }
         };
 
@@ -487,7 +489,7 @@ impl Screen {
     /// ```
     /// use console_engine::pixel;
     /// // ...
-    /// screen.triangle(8,8, 4,6, 9,2, pixel::pxl('#'));
+    /// screen.triangle(8,8, 4,6, 9,2, pixel::pxl("#"));
     /// ```
     #[allow(clippy::too_many_arguments)]
     pub fn triangle(
@@ -500,9 +502,9 @@ impl Screen {
         y3: i32,
         character: Pixel,
     ) {
-        self.line(x1, y1, x2, y2, character);
-        self.line(x2, y2, x3, y3, character);
-        self.line(x3, y3, x1, y1, character);
+        self.line(x1, y1, x2, y2, character.clone());
+        self.line(x2, y2, x3, y3, character.clone());
+        self.line(x3, y3, x1, y1, character.clone());
     }
 
     /// Fill a triangle of the provided character using three sets of coordinates
@@ -512,7 +514,7 @@ impl Screen {
     /// ```
     /// use console_engine::pixel;
     /// // ...
-    /// screen.fill_triangle(8,8, 4,6, 9,2, pixel::pxl('#'));
+    /// screen.fill_triangle(8,8, 4,6, 9,2, pixel::pxl("#"));
     /// ```
     #[allow(clippy::too_many_arguments)]
     pub fn fill_triangle(
@@ -526,7 +528,7 @@ impl Screen {
         character: Pixel,
     ) {
         self.triangle(
-            x1 as i32, y1 as i32, x2 as i32, y2 as i32, x3 as i32, y3 as i32, character,
+            x1 as i32, y1 as i32, x2 as i32, y2 as i32, x3 as i32, y3 as i32, character.clone(),
         );
         // we use tuples for this for now
         let v0 = (x1 as i32, y1 as i32);
@@ -591,7 +593,7 @@ impl Screen {
                 p.0 = x;
                 // If p is on or inside all edges, render pixel.
                 if (w0 | w1 | w2) >= 0 {
-                    self.set_pxl(p.0, p.1, character);
+                    self.set_pxl(p.0, p.1, character.clone());
                 }
 
                 // One step to the right
@@ -620,9 +622,9 @@ impl Screen {
     /// use console_engine::pixel;
     ///
     /// // fill the screen with characters
-    /// screen.fill(pixel::pxl('#'));
+    /// screen.fill(pixel::pxl("#"));
     /// // free one space to the bottom
-    /// screen.scroll(0,1,pixel::pxl(' '));
+    /// screen.scroll(0,1,pixel::pxl(" "));
     /// // print something at this place
     /// screen.print(0, height-1, "Hello, world!");
     /// ```
@@ -632,7 +634,7 @@ impl Screen {
         if h_scroll != 0 {
             // if the scroll is beyond the size of the screen, simply clear it
             if h_scroll >= width || h_scroll <= -width {
-                self.fill(background);
+                self.fill(background.clone());
             } else if h_scroll > 0 {
                 let step = h_scroll as usize;
                 // scroll to the left
@@ -640,12 +642,12 @@ impl Screen {
                     // move the pixels
                     for i in h_scroll..width {
                         let index = self.coord_to_index(i, j);
-                        self.screen[index - step] = self.screen[index];
+                        self.screen[index - step] = self.screen[index].clone();
                     }
                     // fill the gap with background
                     for i in (width - h_scroll)..width {
                         let index = self.coord_to_index(i, j);
-                        self.screen[index] = background;
+                        self.screen[index] = background.clone();
                     }
                 }
             } else {
@@ -655,12 +657,12 @@ impl Screen {
                     // move the pixels
                     for i in (0..(width - h_scroll.abs())).rev() {
                         let index = self.coord_to_index(i, j);
-                        self.screen[index + step] = self.screen[index];
+                        self.screen[index + step] = self.screen[index].clone();
                     }
                     // fill the gap with background
                     for i in 0..h_scroll.abs() {
                         let index = self.coord_to_index(i, j);
-                        self.screen[index] = background;
+                        self.screen[index] = background.clone();
                     }
                 }
             }
@@ -668,7 +670,7 @@ impl Screen {
         if v_scroll != 0 {
             // if the scroll is beyond the size of the screen, simply clear it
             if v_scroll >= height || v_scroll <= -height {
-                self.fill(background);
+                self.fill(background.clone());
             } else if v_scroll > 0 {
                 let step = (width * v_scroll) as usize;
                 // scroll to the top
@@ -676,12 +678,12 @@ impl Screen {
                     // move the pixels
                     for j in v_scroll..height {
                         let index = self.coord_to_index(i, j);
-                        self.screen[index - step] = self.screen[index];
+                        self.screen[index - step] = self.screen[index].clone();
                     }
                     // fill the gap with background
                     for j in (height - v_scroll)..height {
                         let index = self.coord_to_index(i, j);
-                        self.screen[index] = background;
+                        self.screen[index] = background.clone();
                     }
                 }
             } else {
@@ -691,12 +693,12 @@ impl Screen {
                     // move the pixels
                     for j in (0..(height - v_scroll.abs())).rev() {
                         let index = self.coord_to_index(i, j);
-                        self.screen[index + step] = self.screen[index];
+                        self.screen[index + step] = self.screen[index].clone();
                     }
                     // fill the gap with background
                     for j in 0..v_scroll.abs() {
                         let index = self.coord_to_index(i, j);
-                        self.screen[index] = background;
+                        self.screen[index] = background.clone();
                     }
                 }
             }
@@ -727,10 +729,11 @@ impl Screen {
     ///     screen.print(0,0,"Found a 'o'");
     /// }
     /// ```
-    pub fn get_pxl(&self, x: i32, y: i32) -> Result<Pixel, String> {
+    pub fn get_pxl(&self, x: i32, y: i32) -> Result<&Pixel, String> {
         if x >= 0 && y >= 0 && x < self.width as i32 && y < self.height as i32 {
-            return Ok(self.screen[self.coord_to_index(x, y)]);
+            return Ok(&self.screen[self.coord_to_index(x, y)]);
         }
+
         Err(format!(
             "Attempted to get_pxl out of bounds (coords: [{}, {}], bounds: [{}, {}])",
             x,
@@ -749,13 +752,13 @@ impl Screen {
     /// ```
     pub fn resize(&mut self, new_width: u32, new_height: u32) {
         // create new screens Vec
-        let mut new_screen = vec![pixel::pxl(' '); (new_width * new_height) as usize];
+        let mut new_screen = vec![pixel::pxl(" "); (new_width * new_height) as usize];
         // transfer old screens into new screens
         for j in 0..std::cmp::min(self.height, new_height) {
             for i in 0..std::cmp::min(self.width, new_width) {
                 if (i as u32) < self.width && (j as u32) < self.height {
                     new_screen[((j * new_width) + i) as usize] =
-                        self.screen[((j * self.width) + i) as usize];
+                        self.screen[((j * self.width) + i) as usize].clone();
                 }
             }
         }
@@ -772,7 +775,7 @@ impl Screen {
     /// ```
     /// use console_engine::pixel;
     /// // extract a 3x2 screen from the screen variable and print it
-    /// let scr_chunk = screen.extract(10, 4, 12, 5, pixel::pxl(' '));
+    /// let scr_chunk = screen.extract(10, 4, 12, 5, pixel::pxl(" "));
     /// scr_chunk.draw();
     /// ```
     pub fn extract(
@@ -810,7 +813,7 @@ impl Screen {
             } {
                 if i >= 0 && i < self.width as i32 && j >= 0 && j < self.height as i32 {
                     extracted_screen[((y * target_width as i32) + x) as usize] =
-                        self.screen[self.coord_to_index(i, j)];
+                        self.screen[self.coord_to_index(i, j)].clone();
                 }
                 x += if x_reversed { -1 } else { 1 };
             }
@@ -838,7 +841,7 @@ impl Screen {
                 output,
                 style::SetForegroundColor(pixel.fg),
                 style::SetBackgroundColor(pixel.bg),
-                style::Print(pixel.chr)
+                style::Print(&pixel.chr)
             )
             .unwrap();
             if i != self.width * self.height - 1 && i % self.width == self.width - 1 {
